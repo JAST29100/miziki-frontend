@@ -920,3 +920,582 @@ a {
     padding: 5px 6px;
   }
 }
+
+/* BOTONES DE "Mis eventos" / "Mi perfil" en Inicio (ahora son Link) */
+
+.botones-actividad a {
+  flex: 1;
+  height: 33px;
+  border-radius: 9px;
+  background: #eaf9ef;
+  color: #00a94f;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.botones-actividad a:last-child {
+  background: #f1f1f6;
+  color: #171717;
+}
+
+/* ESTRUCTURA COMÚN (sin panel derecho) */
+
+.zona-pagina {
+  grid-column: 2 / -1;
+  padding-top: 22px;
+  padding-bottom: 25px;
+  min-width: 0;
+}
+
+.encabezado-pagina {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.titulo-pagina h2 {
+  font-size: 21px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.titulo-pagina p {
+  font-size: 10px;
+  color: #888;
+}
+
+.boton-principal {
+  height: 31px;
+  min-width: 120px;
+  padding: 0 20px;
+  border-radius: 10px;
+  background: #14ae5c;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.boton-principal:hover {
+  background: #10964e;
+}
+
+.tarjeta-pagina {
+  background: white;
+  border: 1px solid #e1e1e8;
+  border-radius: 13px;
+  padding: 14px 13px;
+  min-width: 0;
+}
+
+.tarjeta-pagina h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.encabezado-tarjeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.encabezado-tarjeta h3 {
+  margin: 0;
+}
+
+.enlace-verde {
+  color: #00a94f;
+  background: transparent;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.boton-pildora {
+  height: 25px;
+  padding: 0 14px;
+  border-radius: 20px;
+  background: #14ae5c;
+  color: white;
+  font-size: 8px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.boton-pildora:hover {
+  background: #10964e;
+}
+
+.boton-pildora.secundario {
+  background: white;
+  color: #00a94f;
+  border: 1px solid #14ae5c;
+}
+
+.boton-pildora.secundario:hover {
+  background: #f1f8f3;
+}
+
+.subtitulo-tarjeta {
+  color: #888;
+  font-size: 9px;
+  margin-bottom: 12px;
+}
+
+/* CAMPOS (formulario de evento y datos de perfil) */
+
+.campo-formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 9px;
+}
+
+.campo-formulario label {
+  font-size: 8px;
+  font-weight: 600;
+  color: #777;
+}
+
+.campo {
+  width: 100%;
+  min-height: 27px;
+  padding: 0 11px;
+  display: flex;
+  align-items: center;
+  background: #f1f1f6;
+  border: none;
+  outline: none;
+  border-radius: 8px;
+  font-size: 10px;
+  color: #171717;
+}
+
+.campo::placeholder {
+  color: #4a4a4a;
+  opacity: 1;
+}
+
+.campo:focus-visible {
+  outline: 2px solid rgba(20, 174, 92, 0.4);
+}
+
+.mensaje-error {
+  color: #d64545;
+  font-size: 8px;
+  margin-top: 2px;
+}
+
+/* EVENTOS */
+
+.eventos-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.eventos-proximos {
+  min-height: 462px;
+}
+
+.eventos-lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.eventos-lateral > .tarjeta-pagina {
+  flex: 1;
+}
+
+.fila-evento {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: #f1f1f6;
+  border-radius: 10px;
+}
+
+.fila-evento.verde {
+  background: #eaf9ef;
+}
+
+.fila-evento h4 {
+  font-size: 11px;
+  font-weight: 600;
+  margin: 4px 0 3px;
+}
+
+.fila-evento p {
+  color: #888;
+  font-size: 9px;
+}
+
+.evento-propio {
+  background: #f1f1f6;
+  border-radius: 10px;
+  padding: 11px 13px;
+  margin-bottom: 9px;
+}
+
+.evento-propio.verde {
+  background: #eaf9ef;
+}
+
+.evento-propio h4 {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.evento-propio p {
+  color: #888;
+  font-size: 9px;
+  margin-bottom: 7px;
+}
+
+/* SOCIAL */
+
+.social-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 8fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.social-layout > .tarjeta-pagina {
+  min-height: 450px;
+}
+
+.fila-amigo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: #f1f1f6;
+  border-radius: 10px;
+}
+
+.fila-amigo.activa {
+  background: #eaf9ef;
+}
+
+.avatar-blanco {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: white;
+  color: #14ae5c;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 8px;
+  font-weight: bold;
+}
+
+.fila-amigo h4 {
+  font-size: 10px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.fila-amigo p {
+  color: #888;
+  font-size: 8px;
+  margin-bottom: 3px;
+}
+
+.ver-perfil-amigo {
+  color: #00a94f;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.fila-conversacion {
+  display: block;
+  width: 100%;
+  min-height: 61px;
+  padding: 11px 13px;
+  margin-bottom: 9px;
+  text-align: left;
+  background: #f1f1f6;
+  border-radius: 10px;
+  color: inherit;
+}
+
+.fila-conversacion:hover {
+  background: #ebebf2;
+}
+
+.fila-conversacion.activa {
+  background: #eaf9ef;
+}
+
+.conversacion-superior {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 10px;
+}
+
+.conversacion-tiempo {
+  color: #888;
+  font-size: 8px;
+}
+
+.conversacion-vista-previa {
+  display: block;
+  color: #888;
+  font-size: 9px;
+}
+
+.chat {
+  background: #f1f1f6;
+  border-radius: 12px;
+  padding: 13px;
+  margin-top: 14px;
+}
+
+.chat h4 {
+  font-size: 10px;
+  font-weight: 600;
+  margin-bottom: 11px;
+}
+
+.chat-mensajes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 90px;
+  max-height: 190px;
+  overflow-y: auto;
+  margin-bottom: 11px;
+}
+
+.burbuja {
+  max-width: 48%;
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: white;
+  font-size: 9px;
+  align-self: flex-start;
+}
+
+.burbuja.enviada {
+  align-self: flex-end;
+  background: #eaf9ef;
+}
+
+.chat-formulario input {
+  width: 100%;
+  height: 29px;
+  padding: 0 13px;
+  background: white;
+  border: none;
+  outline: none;
+  border-radius: 8px;
+  font-size: 9px;
+}
+
+.chat-formulario input:focus-visible {
+  outline: 2px solid rgba(20, 174, 92, 0.4);
+}
+
+/* PERFIL */
+
+.perfil-cabecera {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+  min-height: 138px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.avatar-grande {
+  width: 74px;
+  height: 74px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #eaf9ef;
+  color: #14ae5c;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.perfil-datos h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.perfil-datos p {
+  color: #888;
+  font-size: 9px;
+  margin-bottom: 9px;
+}
+
+.etiquetas-perfil {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: #00a94f;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.perfil-estadisticas {
+  margin-left: auto;
+  display: flex;
+  gap: 26px;
+  padding-right: 20px;
+  text-align: center;
+}
+
+.estadistica strong {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.estadistica span {
+  color: #888;
+  font-size: 8px;
+}
+
+.perfil-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 3fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.perfil-layout > .tarjeta-pagina {
+  min-height: 290px;
+}
+
+.perfil-layout .campo-formulario {
+  margin-bottom: 14px;
+}
+
+.perfil-layout .campo {
+  min-height: 31px;
+}
+
+.opcion-config {
+  display: block;
+  width: 100%;
+  padding: 10px 13px;
+  margin-bottom: 10px;
+  text-align: left;
+  background: #f1f1f6;
+  border-radius: 10px;
+  color: inherit;
+}
+
+.opcion-config:hover {
+  background: #ebebf2;
+}
+
+.opcion-config.activa {
+  background: #eaf9ef;
+}
+
+.opcion-config strong {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.opcion-config span {
+  color: #888;
+  font-size: 8px;
+}
+
+.boton-cerrar-sesion {
+  width: 100%;
+  height: 31px;
+  margin-top: 4px;
+  border-radius: 10px;
+  background: #f1f1f6;
+  color: #888;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.boton-cerrar-sesion:hover {
+  background: #e8e8ef;
+}
+
+/* RESPONSIVE: PÁGINAS INTERNAS */
+
+@media (max-width: 900px) {
+  .eventos-layout,
+  .social-layout,
+  .perfil-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .eventos-proximos,
+  .social-layout > .tarjeta-pagina,
+  .perfil-layout > .tarjeta-pagina {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 650px) {
+  .zona-pagina {
+    padding-top: 5px;
+  }
+
+  .encabezado-pagina {
+    flex-wrap: wrap;
+  }
+
+  .fila-evento {
+    flex-wrap: wrap;
+  }
+
+  .burbuja {
+    max-width: 80%;
+  }
+
+  .perfil-cabecera {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .perfil-estadisticas {
+    margin-left: 0;
+    padding-right: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+}

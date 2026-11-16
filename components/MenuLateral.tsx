@@ -3,8 +3,29 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+interface EnlaceNavegacion {
+  href: string;
+  etiqueta: string;
+}
+
+const enlacesNavegacion: EnlaceNavegacion[] = [
+  { href: "/", etiqueta: "Inicio" },
+  { href: "/mapa", etiqueta: "Mapa" },
+  { href: "/eventos", etiqueta: "Eventos" },
+  { href: "/social", etiqueta: "Social" },
+  { href: "/perfil", etiqueta: "Perfil" },
+];
+
 export default function MenuLateral() {
-  const rutaActual = usePathname();
+  const rutaActual = usePathname() ?? "";
+
+  const esActivo = (href: string): boolean => {
+    if (href === "/") {
+      return rutaActual === "/";
+    }
+
+    return rutaActual === href || rutaActual.startsWith(`${href}/`);
+  };
 
   return (
     <aside className="menu-lateral">
@@ -12,35 +33,18 @@ export default function MenuLateral() {
         <p className="titulo-menu">NAVEGACIÓN</p>
 
         <nav className="navegacion">
-          <Link
-            href="/"
-            className={`enlace-menu ${
-              rutaActual === "/" ? "activo" : ""
-            }`}
-          >
-            Inicio
-          </Link>
-
-          <Link
-            href="/mapa"
-            className={`enlace-menu ${
-              rutaActual === "/mapa" ? "activo" : ""
-            }`}
-          >
-            Mapa
-          </Link>
-
-          <Link href="/eventos" className="enlace-menu">
-            Eventos
-          </Link>
-
-          <Link href="/social" className="enlace-menu">
-            Social
-          </Link>
-
-          <Link href="/perfil" className="enlace-menu">
-            Perfil
-          </Link>
+          {enlacesNavegacion.map((enlace) => (
+            <Link
+              key={enlace.href}
+              href={enlace.href}
+              className={`enlace-menu ${
+                esActivo(enlace.href) ? "activo" : ""
+              }`}
+              aria-current={esActivo(enlace.href) ? "page" : undefined}
+            >
+              {enlace.etiqueta}
+            </Link>
+          ))}
         </nav>
       </div>
 
