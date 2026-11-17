@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { matchService } from "@/services/match.service";
+import { useActiveUser } from "@/contexts/ActiveUserContext";
+import type { User } from "@/types/user";
 
 interface Musico {
-  id: number;
+  id: string;
   nombre: string;
   instrumento: string;
   nivel: string;
@@ -24,52 +27,98 @@ interface Evento {
 }
 
 export default function Mapa() {
+  const { activeUser } = useActiveUser();
+  const activeUserId = activeUser?.id;
+  const [candidatos, setCandidatos] = useState<User[]>([]);
+  const [isLoadingMusicos, setIsLoadingMusicos] = useState(true);
+  const [errorMusicos, setErrorMusicos] = useState<string | null>(null);
   const [distancia, setDistancia] = useState("5");
   const [instrumento, setInstrumento] = useState("Todos");
   const [nivel, setNivel] = useState("Todos");
 
-  const musicos: Musico[] = [
+  useEffect(() => {
+    let vigente = true;
+
+    async function cargarCandidatos() {
+      if (!activeUserId) {
+        setCandidatos([]);
+        setErrorMusicos(null);
+        setIsLoadingMusicos(false);
+        return;
+      }
+
+      setIsLoadingMusicos(true);
+      setErrorMusicos(null);
+      try {
+        const [descubiertos, misMatches] = await Promise.all([
+          matchService.discover(activeUserId),
+          matchService.getAll(activeUserId),
+        ]);
+        if (vigente) {
+          setCandidatos(
+            descubiertos.filter(
+              (usuario) =>
+                !misMatches.some((match) => match.usuariosMatch.includes(usuario.id)),
+            ),
+          );
+        }
+      } catch (error) {
+        if (vigente) {
+          setErrorMusicos(
+            error instanceof Error
+              ? error.message
+              : "No se pudieron cargar los músicos del mapa.",
+          );
+        }
+      } finally {
+        if (vigente) setIsLoadingMusicos(false);
+      }
+    }
+
+    void cargarCandidatos();
+    return () => {
+      vigente = false;
+    };
+  }, [activeUserId]);
+
+  const detallesMusicoFallback: Omit<Musico, "id" | "nombre">[] = [
     {
-      id: 1,
-      nombre: "Carlos Delgado",
       instrumento: "Guitarra",
       nivel: "Intermedio",
       distancia: 0.4,
       posicion: { left: "35%", top: "34%" },
     },
     {
-      id: 2,
-      nombre: "Sofía Ramírez",
       instrumento: "Voz",
       nivel: "Avanzado",
       distancia: 0.7,
       posicion: { left: "68%", top: "51%" },
     },
     {
-      id: 3,
-      nombre: "Elena Torres",
       instrumento: "Piano",
       nivel: "Principiante",
       distancia: 1.2,
       posicion: { left: "73%", top: "25%" },
     },
     {
-      id: 4,
-      nombre: "Andrés López",
       instrumento: "Guitarra",
       nivel: "Avanzado",
       distancia: 2.3,
       posicion: { left: "28%", top: "72%" },
     },
     {
-      id: 5,
-      nombre: "Laura Gómez",
       instrumento: "Batería",
       nivel: "Intermedio",
       distancia: 3.5,
       posicion: { left: "53%", top: "80%" },
     },
   ];
+
+  const musicos: Musico[] = candidatos.map((usuario, index) => ({
+    id: usuario.id,
+    nombre: usuario.username,
+    ...detallesMusicoFallback[index % detallesMusicoFallback.length],
+  }));
 
   const eventos: Evento[] = [
     {
@@ -181,7 +230,9 @@ export default function Mapa() {
         </div>
 
         <p className="resultado-filtros">
-          {musicosFiltrados.length} músicos encontrados
+          {isLoadingMusicos
+            ? "Cargando músicos..."
+            : errorMusicos ?? `${musicosFiltrados.length} músicos encontrados`}
         </p>
       </aside>
 

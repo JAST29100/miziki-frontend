@@ -68,7 +68,8 @@ export default function PaginaEventos() {
   const misEventos = activeUser
     ? eventos.filter((evento) => evento.userId === activeUser.id)
     : [];
-  const ahora = Date.now();
+  const [ahora] = useState(() => Date.now());
+
   const proximos = misEventos.filter((evento) => new Date(evento.fecha).getTime() >= ahora).length;
   const finalizados = misEventos.length - proximos;
 

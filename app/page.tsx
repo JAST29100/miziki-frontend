@@ -5,51 +5,30 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 
 import BarraSuperior from "@/components/BarraSuperior";
+import CreacionCard from "@/components/CreacionCard";
 import MenuLateral from "@/components/MenuLateral";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { eventService } from "@/services/event.service";
+import { matchService, MatchServiceError } from "@/services/match.service";
 import { postService } from "@/services/post.service";
+import { songService } from "@/services/song.service";
 import type { Event } from "@/types/event";
 import type { Post } from "@/types/post";
+import type { Song } from "@/types/song";
+import type { User } from "@/types/user";
 
-const musicos = [
+const detallesMusicoFallback = [
   {
-    id: 1,
-    iniciales: "CD",
-    nombre: "Carlos Delgado",
     instrumento: "Guitarra",
     distancia: "0,4 km",
   },
   {
-    id: 2,
-    iniciales: "SR",
-    nombre: "Sofía Ramírez",
     instrumento: "Voz",
     distancia: "0,7 km",
   },
   {
-    id: 3,
-    iniciales: "ET",
-    nombre: "Elena Torres",
     instrumento: "Piano",
     distancia: "1,2 km",
-  },
-];
-
-const creaciones = [
-  {
-    id: 1,
-    titulo: "Noches frías",
-    autor: "Carlos Rojas Neme",
-    instrumento: "Piano",
-    simbolo: "♫",
-  },
-  {
-    id: 2,
-    titulo: "Fur Elise - Cover",
-    autor: "Juan Jose Franco",
-    instrumento: "Piano",
-    simbolo: "♪",
   },
 ];
 
@@ -69,15 +48,30 @@ function obtenerFecha(fecha: string): string {
 export default function Home() {
   const { users, activeUser, isLoading: isLoadingUser } =
     useActiveUser();
+  const activeUserId = activeUser?.id;
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [contenido, setContenido] = useState("");
+  const [tipoPublicar, setTipoPublicar] = useState<"publicacion" | "cancion">("publicacion");
+  const [tituloCancion, setTituloCancion] = useState("");
+  const [generoCancion, setGeneroCancion] = useState("");
+  const [albumCancion, setAlbumCancion] = useState("");
+  const [duracionCancion, setDuracionCancion] = useState("");
+  const [songPublishError, setSongPublishError] = useState<string | null>(null);
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [eventError, setEventError] = useState<string | null>(null);
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [isLoadingSongs, setIsLoadingSongs] = useState(true);
+  const [songError, setSongError] = useState<string | null>(null);
+  const [musicosSugeridos, setMusicosSugeridos] = useState<User[]>([]);
+  const [isLoadingMatches, setIsLoadingMatches] = useState(true);
+  const [matchError, setMatchError] = useState<string | null>(null);
+  const [matchFeedback, setMatchFeedback] = useState<string | null>(null);
+  const [processingMatchId, setProcessingMatchId] = useState<string | null>(null);
 
   useEffect(() => {
     async function cargarPublicaciones() {
@@ -99,6 +93,68 @@ export default function Home() {
     }
 
     void cargarPublicaciones();
+  }, []);
+
+  useEffect(() => {
+    let vigente = true;
+
+    async function cargarSugerencias() {
+      if (!activeUserId) {
+        setMusicosSugeridos([]);
+        setMatchError(null);
+        setMatchFeedback(null);
+        setIsLoadingMatches(false);
+        return;
+      }
+
+      setIsLoadingMatches(true);
+      setMatchError(null);
+      try {
+        const [candidatos, misMatches] = await Promise.all([
+          matchService.discover(activeUserId),
+          matchService.getAll(activeUserId),
+        ]);
+        if (!vigente) return;
+        setMusicosSugeridos(
+          candidatos.filter(
+            (candidato) =>
+              !misMatches.some((match) => match.usuariosMatch.includes(candidato.id)),
+          ),
+        );
+      } catch (error) {
+        if (!vigente) return;
+        setMatchError(
+          error instanceof Error
+            ? error.message
+            : "No se pudieron cargar los músicos sugeridos.",
+        );
+      } finally {
+        if (vigente) setIsLoadingMatches(false);
+      }
+    }
+
+    void cargarSugerencias();
+    return () => {
+      vigente = false;
+    };
+  }, [activeUserId]);
+
+  useEffect(() => {
+    async function cargarCanciones() {
+      try {
+        setSongs(await songService.getAll());
+      } catch (error) {
+        setSongError(
+          error instanceof Error
+            ? error.message
+            : "No se pudieron cargar las canciones.",
+        );
+      } finally {
+        setIsLoadingSongs(false);
+      }
+    }
+
+    void cargarCanciones();
   }, []);
 
   useEffect(() => {
@@ -144,6 +200,49 @@ export default function Home() {
         error instanceof Error
           ? error.message
           : "No se pudo crear la publicación.",
+      );
+    } finally {
+      setIsPublishing(false);
+    }
+  }
+
+  async function publicarCancion(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    const duracion = Number(duracionCancion);
+    if (
+      !activeUser ||
+      !tituloCancion.trim() ||
+      !generoCancion.trim() ||
+      !Number.isInteger(duracion) ||
+      duracion <= 0 ||
+      isPublishing
+    ) {
+      return;
+    }
+
+    setIsPublishing(true);
+    setSongPublishError(null);
+    try {
+      const nuevas = await songService.create({
+        titulo: tituloCancion.trim(),
+        artista: activeUser.username,
+        genero: generoCancion.trim(),
+        album: albumCancion.trim() || undefined,
+        duracion,
+      });
+      setSongs((anteriores) => [
+        ...nuevas,
+        ...anteriores.filter(
+          (cancion) => !nuevas.some((nueva) => nueva.id === cancion.id),
+        ),
+      ]);
+      setTituloCancion("");
+      setGeneroCancion("");
+      setAlbumCancion("");
+      setDuracionCancion("");
+    } catch (error) {
+      setSongPublishError(
+        error instanceof Error ? error.message : "No se pudo publicar la canción.",
       );
     } finally {
       setIsPublishing(false);
@@ -206,11 +305,62 @@ export default function Home() {
     }
   }
 
+  async function darLike(musico: User) {
+    if (!activeUser || processingMatchId) return;
+    setProcessingMatchId(musico.id);
+    setMatchError(null);
+    setMatchFeedback(null);
+    try {
+      const nuevoMatch = await matchService.like(activeUser.id, musico.id);
+      setMusicosSugeridos((anteriores) => anteriores.filter((item) => item.id !== musico.id));
+      if (nuevoMatch) {
+        setMatchFeedback(`¡Tienes un nuevo match con ${musico.username}!`);
+      } else {
+        setMatchFeedback(`Le enviaste un me gusta a ${musico.username}.`);
+      }
+    } catch (error) {
+      if (error instanceof MatchServiceError && error.status === 409) {
+        setMusicosSugeridos((anteriores) =>
+          anteriores.filter((item) => item.id !== musico.id),
+        );
+        setMatchFeedback(`Ya habías enviado un me gusta a ${musico.username}.`);
+        return;
+      }
+      setMatchError(error instanceof Error ? error.message : "No se pudo enviar el me gusta.");
+    } finally {
+      setProcessingMatchId(null);
+    }
+  }
+
+  async function rechazarMusico(musico: User) {
+    if (!activeUser || processingMatchId) return;
+    setProcessingMatchId(musico.id);
+    setMatchError(null);
+    setMatchFeedback(null);
+    try {
+      await matchService.reject(activeUser.id, musico.id);
+      setMusicosSugeridos((anteriores) => anteriores.filter((item) => item.id !== musico.id));
+    } catch (error) {
+      setMatchError(error instanceof Error ? error.message : "No se pudo descartar al músico.");
+    } finally {
+      setProcessingMatchId(null);
+    }
+  }
+
   function obtenerNombreAutor(userId: string): string {
     return (
       users.find((user) => user.id === userId)?.username ??
       "Usuario desconocido"
     );
+  }
+
+  function obtenerIniciales(nombre: string): string {
+    return nombre
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((parte) => parte.charAt(0).toUpperCase())
+      .join("");
   }
 
   return (
@@ -232,15 +382,86 @@ export default function Home() {
             </p>
           </div>
 
-          <form className="publicar" onSubmit={publicar}>
-            <textarea
-              placeholder="Comparte una idea, una canción o invita a un evento..."
-              value={contenido}
-              onChange={(evento) =>
-                setContenido(evento.target.value)
-              }
-              disabled={isLoadingUser || !activeUser || isPublishing}
-            />
+          <form
+            className="publicar"
+            onSubmit={tipoPublicar === "publicacion" ? publicar : publicarCancion}
+          >
+            <div
+              className="selector-publicar"
+              role="group"
+              aria-label="Tipo de contenido"
+            >
+              <button
+                type="button"
+                className={tipoPublicar === "publicacion" ? "activo" : ""}
+                onClick={() => {
+                  setTipoPublicar("publicacion");
+                  setSongPublishError(null);
+                }}
+              >
+                Publicación
+              </button>
+              <button
+                type="button"
+                className={tipoPublicar === "cancion" ? "activo" : ""}
+                onClick={() => {
+                  setTipoPublicar("cancion");
+                  setPostError(null);
+                }}
+              >
+                Canción
+              </button>
+            </div>
+
+            {tipoPublicar === "publicacion" ? (
+              <textarea
+                placeholder="Comparte una idea, una canción o invita a un evento..."
+                value={contenido}
+                onChange={(evento) => setContenido(evento.target.value)}
+                disabled={isLoadingUser || !activeUser || isPublishing}
+              />
+            ) : (
+              <div className="campos-publicar-cancion">
+                <input
+                  className="campo"
+                  aria-label="Título de la canción"
+                  placeholder="Título"
+                  value={tituloCancion}
+                  onChange={(evento) => setTituloCancion(evento.target.value)}
+                  required
+                  disabled={isLoadingUser || !activeUser || isPublishing}
+                />
+                <input
+                  className="campo"
+                  aria-label="Género"
+                  placeholder="Género"
+                  value={generoCancion}
+                  onChange={(evento) => setGeneroCancion(evento.target.value)}
+                  required
+                  disabled={isLoadingUser || !activeUser || isPublishing}
+                />
+                <input
+                  className="campo"
+                  aria-label="Álbum opcional"
+                  placeholder="Álbum (opcional)"
+                  value={albumCancion}
+                  onChange={(evento) => setAlbumCancion(evento.target.value)}
+                  disabled={isLoadingUser || !activeUser || isPublishing}
+                />
+                <input
+                  className="campo"
+                  aria-label="Duración en segundos"
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="Duración (segundos)"
+                  value={duracionCancion}
+                  onChange={(evento) => setDuracionCancion(evento.target.value)}
+                  required
+                  disabled={isLoadingUser || !activeUser || isPublishing}
+                />
+              </div>
+            )}
 
             <div className="publicar-acciones">
               <button
@@ -249,11 +470,20 @@ export default function Home() {
                 disabled={
                   isLoadingUser ||
                   !activeUser ||
-                  !contenido.trim() ||
+                  (tipoPublicar === "publicacion" && !contenido.trim()) ||
+                  (tipoPublicar === "cancion" &&
+                    (!tituloCancion.trim() ||
+                      !generoCancion.trim() ||
+                      !Number.isInteger(Number(duracionCancion)) ||
+                      Number(duracionCancion) <= 0)) ||
                   isPublishing
                 }
               >
-                {isPublishing ? "Publicando..." : "Publicar"}
+                {isPublishing
+                  ? "Publicando..."
+                  : tipoPublicar === "publicacion"
+                    ? "Publicar"
+                    : "Publicar canción"}
               </button>
             </div>
 
@@ -267,6 +497,11 @@ export default function Home() {
           {postError && (
             <p role="alert" className="mensaje-error">
               {postError}
+            </p>
+          )}
+          {songPublishError && (
+            <p role="alert" className="mensaje-error">
+              {songPublishError}
             </p>
           )}
 
@@ -348,27 +583,58 @@ export default function Home() {
               </Link>
             </div>
 
+            {matchError && (
+              <p role="alert" className="mensaje-error">
+                {matchError}
+              </p>
+            )}
+            {matchFeedback && <p role="status">{matchFeedback}</p>}
+
             <div className="lista-musicos">
-              {musicos.map((musico) => (
-                <article
-                  className="tarjeta-musico"
-                  key={musico.id}
-                >
-                  <div className="avatar">
-                    {musico.iniciales}
-                  </div>
+              {isLoadingMatches ? (
+                <p>Cargando músicos sugeridos...</p>
+              ) : musicosSugeridos.length === 0 ? (
+                <p>No hay músicos sugeridos por ahora.</p>
+              ) : (
+                musicosSugeridos.map((musico, index) => {
+                  const detalle =
+                    detallesMusicoFallback[index % detallesMusicoFallback.length];
 
-                  <h4>{musico.nombre}</h4>
+                  return (
+                    <article
+                      className="tarjeta-musico"
+                      key={musico.id}
+                    >
+                      <div className="avatar">
+                        {obtenerIniciales(musico.username)}
+                      </div>
 
-                  <p>
-                    {musico.instrumento} - {musico.distancia}
-                  </p>
+                      <h4>{musico.username}</h4>
 
-                  <button className="boton-perfil">
-                    Ver perfil
-                  </button>
-                </article>
-              ))}
+                      <p>
+                        {detalle.instrumento} - {detalle.distancia}
+                      </p>
+
+                      <button
+                        type="button"
+                        className="boton-perfil"
+                        onClick={() => void darLike(musico)}
+                        disabled={processingMatchId !== null}
+                      >
+                        Me gusta
+                      </button>
+                      <button
+                        type="button"
+                        className="enlace-verde"
+                        onClick={() => void rechazarMusico(musico)}
+                        disabled={processingMatchId !== null}
+                      >
+                        Pasar
+                      </button>
+                    </article>
+                  );
+                })
+              )}
             </div>
           </section>
 
@@ -382,32 +648,19 @@ export default function Home() {
             </div>
 
             <div className="lista-creaciones">
-              {creaciones.map((creacion) => (
-                <article
-                  className="tarjeta-creacion"
-                  key={creacion.id}
-                >
-                  <div className="portada-creacion">
-                    <span>{creacion.simbolo}</span>
-                  </div>
-
-                  <div className="informacion-creacion">
-                    <h4>{creacion.titulo}</h4>
-
-                    <p>{creacion.autor}</p>
-
-                    <div className="pie-creacion">
-                      <span className="etiqueta">
-                        {creacion.instrumento}
-                      </span>
-
-                      <button className="boton-escuchar">
-                        Escuchar
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              ))}
+              {isLoadingSongs ? (
+                <p>Cargando canciones...</p>
+              ) : songError ? (
+                <p role="alert" className="mensaje-error">
+                  {songError}
+                </p>
+              ) : songs.length === 0 ? (
+                <p>Todavía no hay canciones publicadas.</p>
+              ) : (
+                songs.map((song) => (
+                  <CreacionCard key={song.id} song={song} />
+                ))
+              )}
             </div>
           </section>
         </main>
