@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -25,6 +26,7 @@ interface ActiveUserContextValue {
   isLoading: boolean;
   error: string | null;
   selectUser: (userId: string) => void;
+  logout: () => void;
   createActiveUser: (
     data: Omit<CreateUserDTO, "creadoEn">,
   ) => Promise<User>;
@@ -61,15 +63,11 @@ export function ActiveUserProvider({
         (user) => user.id === savedUserId,
       );
 
-      const selectedUser = savedUserExists
-        ? savedUserId
-        : fetchedUsers[0]?.id ?? null;
+      const selectedUser = savedUserExists ? savedUserId : null;
 
       setActiveUserId(selectedUser);
 
-      if (selectedUser) {
-        localStorage.setItem(STORAGE_KEY, selectedUser);
-      } else {
+      if (!selectedUser) {
         localStorage.removeItem(STORAGE_KEY);
       }
     } catch (err) {
@@ -101,6 +99,12 @@ export function ActiveUserProvider({
     },
     [users],
   );
+
+  const logout = useCallback(() => {
+    setActiveUserId(null);
+    localStorage.removeItem(STORAGE_KEY);
+    setError(null);
+  }, []);
 
   const createActiveUser = useCallback(
     async (data: Omit<CreateUserDTO, "creadoEn">) => {
@@ -181,6 +185,7 @@ export function ActiveUserProvider({
       isLoading,
       error,
       selectUser,
+      logout,
       createActiveUser,
       updateActiveUser,
       reloadUsers,
@@ -191,6 +196,7 @@ export function ActiveUserProvider({
       isLoading,
       error,
       selectUser,
+      logout,
       createActiveUser,
       updateActiveUser,
       reloadUsers,

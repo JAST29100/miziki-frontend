@@ -1499,3 +1499,273 @@ a {
     justify-content: space-between;
   }
 }
+
+
+/* =========================================
+   AJUSTES: CUENTAS Y BARRA SUPERIOR
+========================================= */
+
+.acciones-superiores {
+  gap: 24px;
+}
+
+.acciones-superiores select {
+  max-width: 145px;
+  min-height: 29px;
+  padding: 0 10px;
+  border: 1px solid #e1e1e8;
+  border-radius: 8px;
+  background: #f1f1f6;
+  color: #171717;
+  font-size: 10px;
+  outline: none;
+  cursor: pointer;
+}
+
+.acciones-superiores select:focus-visible {
+  outline: 2px solid rgba(20, 174, 92, 0.4);
+}
+
+.usuario-superior {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #171717;
+  white-space: nowrap;
+}
+
+.usuario-superior:hover {
+  color: #00a94f;
+}
+
+/* =========================================
+   PERFIL: SELECCIÓN Y CREACIÓN DE CUENTAS
+========================================= */
+
+.zona-pagina > .tarjeta-pagina {
+  margin-bottom: 16px;
+}
+
+.zona-pagina > .tarjeta-pagina p {
+  color: #777;
+  font-size: 10px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.zona-pagina > .tarjeta-pagina form {
+  max-width: 440px;
+}
+
+.zona-pagina > .tarjeta-pagina form .boton-principal {
+  margin-top: 5px;
+}
+
+.zona-pagina > .tarjeta-pagina > .boton-pildora {
+  margin-top: 5px;
+}
+
+.zona-pagina > .tarjeta-pagina > div > h3 {
+  margin-top: 15px;
+}
+
+/* =========================================
+   PERFIL: INFORMACIÓN MUSICAL
+========================================= */
+
+.perfil-layout .campo-formulario {
+  gap: 6px;
+}
+
+.perfil-layout .campo {
+  min-height: 34px;
+  line-height: 1.4;
+}
+
+.perfil-layout input.campo {
+  border: 1px solid transparent;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.perfil-layout input.campo:focus {
+  background: #fff;
+  border-color: #14ae5c;
+}
+
+/* =========================================
+   CONFIGURACIÓN: BLOQUES INTERACTIVOS
+========================================= */
+
+.perfil-layout .opcion-config {
+  transition: background 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+
+.perfil-layout .opcion-config:active {
+  transform: scale(0.99);
+}
+
+.perfil-layout .opcion-config.activa strong {
+  color: #00a94f;
+}
+
+.perfil-layout .opcion-config.activa span {
+  color: #56866a;
+}
+
+.perfil-layout .opcion-config + div {
+  padding: 12px;
+  margin: 3px 0 14px;
+  background: #f8f8fa;
+  border: 1px solid #ededf1;
+  border-radius: 10px;
+}
+
+.perfil-layout .opcion-config + div h3 {
+  font-size: 11px;
+  margin-bottom: 12px;
+}
+
+.perfil-layout .opcion-config + div p {
+  color: #777;
+  font-size: 9px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.perfil-layout .opcion-config + div .campo-formulario {
+  margin-bottom: 12px;
+}
+
+.perfil-layout .opcion-config + div .campo-formulario:last-child {
+  margin-bottom: 2px;
+}
+
+/* Switches / opciones */
+
+.perfil-layout .opcion-config + div .campo-formulario label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  color: #444;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.perfil-layout .opcion-config + div input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 32px;
+  height: 18px;
+  margin: 0;
+  border-radius: 20px;
+  background: #d6d6df;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.perfil-layout .opcion-config + div input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.perfil-layout .opcion-config + div input[type="checkbox"]:checked {
+  background: #14ae5c;
+}
+
+.perfil-layout .opcion-config + div input[type="checkbox"]:checked::before {
+  transform: translateX(14px);
+}
+
+.perfil-layout .opcion-config + div input[type="checkbox"]:focus-visible {
+  outline: 2px solid rgba(20, 174, 92, 0.4);
+  outline-offset: 3px;
+}
+
+/* Información de cuenta */
+
+.perfil-layout .opcion-config + div input[readonly] {
+  cursor: default;
+  color: #777;
+}
+
+/* =========================================
+   BOTÓN CERRAR SESIÓN
+========================================= */
+
+.boton-cerrar-sesion {
+  margin-top: 12px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.boton-cerrar-sesion:hover {
+  background: #fff0f0;
+  color: #d64545;
+}
+
+/* =========================================
+   ESTADOS Y ACCESIBILIDAD
+========================================= */
+
+.boton-principal:disabled,
+.boton-pildora:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+a:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(20, 174, 92, 0.5);
+  outline-offset: 2px;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 650px) {
+  .acciones-superiores {
+    gap: 10px;
+  }
+
+  .acciones-superiores select {
+    max-width: 105px;
+    font-size: 9px;
+  }
+
+  .usuario-superior {
+    font-size: 9px;
+  }
+
+  .perfil-layout .opcion-config + div {
+    padding: 11px;
+  }
+
+  .zona-pagina > .tarjeta-pagina form {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .acciones-superiores {
+    gap: 7px;
+  }
+
+  .acciones-superiores select {
+    max-width: 85px;
+  }
+}

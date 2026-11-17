@@ -7,7 +7,9 @@ import Link from "next/link";
 import BarraSuperior from "@/components/BarraSuperior";
 import MenuLateral from "@/components/MenuLateral";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
+import { eventService } from "@/services/event.service";
 import { postService } from "@/services/post.service";
+import type { Event } from "@/types/event";
 import type { Post } from "@/types/post";
 
 const musicos = [
@@ -73,6 +75,9 @@ export default function Home() {
   const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [eventError, setEventError] = useState<string | null>(null);
 
   useEffect(() => {
     async function cargarPublicaciones() {
@@ -94,6 +99,22 @@ export default function Home() {
     }
 
     void cargarPublicaciones();
+  }, []);
+
+  useEffect(() => {
+    async function cargarEventos() {
+      try {
+        setEvents(await eventService.getAll());
+      } catch (error) {
+        setEventError(
+          error instanceof Error ? error.message : "No se pudieron cargar los eventos.",
+        );
+      } finally {
+        setIsLoadingEvents(false);
+      }
+    }
+
+    void cargarEventos();
   }, []);
 
   async function publicar(evento: FormEvent<HTMLFormElement>) {
@@ -395,26 +416,34 @@ export default function Home() {
           <section className="panel-tarjeta">
             <div className="encabezado-panel">
               <h3>Eventos cerca de ti</h3>
-              <a href="#">Ver todos →</a>
+              <Link href="/eventos">Ver todos →</Link>
             </div>
 
-            <div className="evento evento-verde">
-              <span className="fecha-evento">
-                HOY · 20:00
-              </span>
-
-              <h4>Jam de Blues en El Loco Club</h4>
-              <p>Cali · 0,4 km</p>
-            </div>
-
-            <div className="evento">
-              <span className="fecha-evento">
-                SÁB · 18:00
-              </span>
-
-              <h4>Aurora Sound Fest</h4>
-              <p>Cali · 0,5 km</p>
-            </div>
+            {isLoadingEvents ? (
+              <p>Cargando eventos...</p>
+            ) : eventError ? (
+              <p role="alert" className="mensaje-error">{eventError}</p>
+            ) : events.filter((event) => new Date(event.fecha).getTime() >= Date.now()).length === 0 ? (
+              <p>Todavía no hay eventos próximos.</p>
+            ) : (
+              events
+                .filter((event) => new Date(event.fecha).getTime() >= Date.now())
+                .slice(0, 2)
+                .map((event, index) => (
+                  <div className={`evento ${index === 0 ? "evento-verde" : ""}`} key={event.id}>
+                    <span className="fecha-evento">
+                      {new Date(event.fecha).toLocaleString("es-CO", {
+                        weekday: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })}
+                    </span>
+                    <h4>{event.titulo}</h4>
+                    <p>{event.descripcion || "Cali, Colombia"} · {event.asistentes.length} asistentes</p>
+                  </div>
+                ))
+            )}
           </section>
 
           <section className="panel-tarjeta">
@@ -438,9 +467,7 @@ export default function Home() {
           <section className="panel-tarjeta actividad">
             <h3>Gestiona tu actividad</h3>
 
-            <button className="boton-crear">
-              + Crear evento
-            </button>
+            <Link href="/eventos" className="boton-crear">+ Crear evento</Link>
 
             <div className="botones-actividad">
               <button>Mis eventos</button>

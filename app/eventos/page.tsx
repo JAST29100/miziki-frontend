@@ -1,75 +1,18 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import BarraSuperior from "@/components/BarraSuperior";
 import MenuLateral from "@/components/MenuLateral";
-
-interface EventoProximo {
-  id: number;
-  fecha: string;
-  titulo: string;
-  lugar: string;
-  distancia: string;
-  destacado?: boolean;
-}
-
-interface MiEvento {
-  id: number;
-  titulo: string;
-  detalle: string;
-}
-
-interface ResumenMisEventos {
-  proximos: number;
-  finalizados: number;
-}
+import { useActiveUser } from "@/contexts/ActiveUserContext";
+import { eventService } from "@/services/event.service";
+import type { Event } from "@/types/event";
 
 interface FormularioEvento {
   nombre: string;
   fecha: string;
   ubicacion: string;
 }
-
-// TODO: reemplazar por fetch a la API de NestJS (GET /eventos/proximos)
-const eventosProximos: EventoProximo[] = [
-  {
-    id: 1,
-    fecha: "HOY · 20:00",
-    titulo: "Jam de Blues en El Loco Club",
-    lugar: "Cali",
-    distancia: "0,4 km",
-    destacado: true,
-  },
-  {
-    id: 2,
-    fecha: "SÁB · 18:00",
-    titulo: "Aurora Sound Fest",
-    lugar: "Cali",
-    distancia: "0,5 km",
-  },
-  {
-    id: 3,
-    fecha: "DOM · 16:00",
-    titulo: "Micrófono Abierto",
-    lugar: "Cali",
-    distancia: "1,0 km",
-  },
-];
-
-// TODO: reemplazar por fetch a la API de NestJS (GET /usuarios/me/eventos)
-const misEventosIniciales: MiEvento[] = [
-  {
-    id: 1,
-    titulo: "Ensayo acústico",
-    detalle: "Vie · 19:00 · 5 participantes",
-  },
-];
-
-const resumenInicial: ResumenMisEventos = {
-  proximos: 2,
-  finalizados: 1,
-};
 
 const formularioInicial: FormularioEvento = {
   nombre: "",
@@ -79,6 +22,7 @@ const formularioInicial: FormularioEvento = {
 
 function formatearFecha(valor: string): string {
   const fecha = new Date(valor);
+  if (Number.isNaN(fecha.getTime())) return valor;
 
   const dia = fecha
     .toLocaleDateString("es-CO", { weekday: "short" })
@@ -96,11 +40,10 @@ function formatearFecha(valor: string): string {
 }
 
 export default function PaginaEventos() {
-  const [unidos, setUnidos] = useState<number[]>([]);
-  const [misEventos, setMisEventos] =
-    useState<MiEvento[]>(misEventosIniciales);
-  const [resumen, setResumen] =
-    useState<ResumenMisEventos>(resumenInicial);
+  const { activeUser, isLoading: isLoadingUser } = useActiveUser();
+  const [eventos, setEventos] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [formulario, setFormulario] =
     useState<FormularioEvento>(formularioInicial);
   const [fechaEnfocada, setFechaEnfocada] = useState(false);
@@ -108,12 +51,44 @@ export default function PaginaEventos() {
 
   const nombreRef = useRef<HTMLInputElement>(null);
 
-  function alternarUnirse(id: number) {
-    setUnidos((anteriores) =>
-      anteriores.includes(id)
-        ? anteriores.filter((eventoId) => eventoId !== id)
-        : [...anteriores, id]
-    );
+  useEffect(() => {
+    async function cargarEventos() {
+      setError("");
+      try {
+        setEventos(await eventService.getAll());
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "No se pudieron cargar los eventos.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    void cargarEventos();
+  }, []);
+
+  const misEventos = activeUser
+    ? eventos.filter((evento) => evento.userId === activeUser.id)
+    : [];
+  const ahora = Date.now();
+  const proximos = misEventos.filter((evento) => new Date(evento.fecha).getTime() >= ahora).length;
+  const finalizados = misEventos.length - proximos;
+
+  async function alternarUnirse(evento: Event) {
+    if (!activeUser || isSaving) {
+      setError("Selecciona un usuario desde tu perfil para gestionar asistencia.");
+      return;
+    }
+    setError("");
+    setIsSaving(true);
+    try {
+      const actualizados = evento.asistentes.includes(activeUser.id)
+        ? await eventService.cancelAttendance(evento.id, activeUser.id)
+        : await eventService.attend(evento.id, activeUser.id);
+      setEventos(actualizados);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo actualizar la asistencia.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function actualizarCampo(campo: keyof FormularioEvento, valor: string) {
@@ -129,7 +104,7 @@ export default function PaginaEventos() {
     nombreRef.current?.focus({ preventScroll: true });
   }
 
-  function crearEvento(evento: FormEvent<HTMLFormElement>) {
+  async function crearEvento(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
 
     if (!formulario.nombre.trim() || !formulario.fecha) {
@@ -137,25 +112,42 @@ export default function PaginaEventos() {
       return;
     }
 
-    // TODO: reemplazar por POST a la API de NestJS (POST /eventos)
-    const nuevoEvento: MiEvento = {
-      id: Date.now(),
-      titulo: formulario.nombre.trim(),
-      detalle: `${formatearFecha(formulario.fecha)} · 1 participante`,
-    };
-
-    setMisEventos((anteriores) => [nuevoEvento, ...anteriores]);
-    setResumen((anterior) => ({
-      ...anterior,
-      proximos: anterior.proximos + 1,
-    }));
-    setFormulario(formularioInicial);
-    setError("");
+    if (!activeUser) {
+      setError("Selecciona un usuario desde tu perfil para crear un evento.");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const actualizados = await eventService.create({
+        userId: activeUser.id,
+        titulo: formulario.nombre.trim(),
+        descripcion: formulario.ubicacion.trim() || "Cali, Colombia",
+        fecha: new Date(formulario.fecha).toISOString(),
+      });
+      setEventos(actualizados);
+      setFormulario(formularioInicial);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo crear el evento.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
-  const textoResumen = `${resumen.proximos} próximos · ${
-    resumen.finalizados
-  } finalizado${resumen.finalizados === 1 ? "" : "s"}`;
+  async function eliminarEvento(eventId: string) {
+    if (!window.confirm("¿Eliminar este evento?")) return;
+    setIsSaving(true);
+    setError("");
+    try {
+      setEventos(await eventService.delete(eventId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo eliminar el evento.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const textoResumen = `${proximos} próximos · ${finalizados} finalizado${finalizados === 1 ? "" : "s"}`;
 
   return (
     <div className="pagina">
@@ -185,23 +177,35 @@ export default function PaginaEventos() {
             <section className="tarjeta-pagina eventos-proximos">
               <h3>Próximos eventos</h3>
 
-              {eventosProximos.map((evento) => {
-                const estaUnido = unidos.includes(evento.id);
+              {error && (
+                <p className="mensaje-error" role="alert">
+                  {error}
+                </p>
+              )}
+              {isLoading ? (
+                <p>Cargando eventos...</p>
+              ) : eventos.length === 0 ? (
+                <p>Todavía no hay eventos. Crea el primero.</p>
+              ) : (
+                eventos.map((evento, indice) => {
+                const estaUnido = Boolean(activeUser && evento.asistentes.includes(activeUser.id));
 
                 return (
                   <article
                     key={evento.id}
                     className={`fila-evento ${
-                      evento.destacado ? "verde" : ""
+                      indice === 0 ? "verde" : ""
                     }`}
                   >
                     <div>
-                      <span className="fecha-evento">{evento.fecha}</span>
+                      <span className="fecha-evento">
+                        {formatearFecha(evento.fecha)}
+                      </span>
 
                       <h4>{evento.titulo}</h4>
 
                       <p>
-                        {evento.lugar} · {evento.distancia}
+                        {evento.descripcion || "Cali, Colombia"} · {evento.asistentes.length} asistentes
                       </p>
                     </div>
 
@@ -211,13 +215,15 @@ export default function PaginaEventos() {
                         estaUnido ? "secundario" : ""
                       }`}
                       aria-pressed={estaUnido}
-                      onClick={() => alternarUnirse(evento.id)}
+                      onClick={() => void alternarUnirse(evento)}
+                      disabled={isSaving || isLoadingUser}
                     >
                       {estaUnido ? "Unido ✓" : "Unirme"}
                     </button>
                   </article>
                 );
-              })}
+                })
+              )}
             </section>
 
             <div className="eventos-lateral">
@@ -235,10 +241,17 @@ export default function PaginaEventos() {
                   >
                     <h4>{miEvento.titulo}</h4>
 
-                    <p>{miEvento.detalle}</p>
+                    <p>
+                      {formatearFecha(miEvento.fecha)} · {miEvento.asistentes.length} participantes
+                    </p>
 
-                    <button type="button" className="enlace-verde">
-                      Gestionar →
+                    <button
+                      type="button"
+                      className="enlace-verde"
+                      onClick={() => void eliminarEvento(miEvento.id)}
+                      disabled={isSaving}
+                    >
+                      Eliminar →
                     </button>
                   </article>
                 ))}
