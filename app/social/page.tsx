@@ -248,7 +248,7 @@ export default function PaginaSocial() {
                     >
                       {mensaje.texto}
                     </div>
-                  ))}
+                  ))}cd
                 </div>
 
                 <form className="chat-formulario" onSubmit={enviarMensaje}>

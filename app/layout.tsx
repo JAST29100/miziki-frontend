@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+import { ActiveUserProvider } from "@/contexts/ActiveUserContext";
+
 export const metadata: Metadata = {
   title: "Miziki | Comunidad musical",
   description:
@@ -14,7 +16,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <ActiveUserProvider>
+          {children}
+        </ActiveUserProvider>
+      </body>
     </html>
   );
 }

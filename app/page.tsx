@@ -1,6 +1,14 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import Link from "next/link";
+
 import BarraSuperior from "@/components/BarraSuperior";
 import MenuLateral from "@/components/MenuLateral";
+import { useActiveUser } from "@/contexts/ActiveUserContext";
+import { postService } from "@/services/post.service";
+import type { Post } from "@/types/post";
 
 const musicos = [
   {
@@ -43,7 +51,147 @@ const creaciones = [
   },
 ];
 
+function obtenerFecha(fecha: string): string {
+  const date = new Date(fecha);
+
+  if (Number.isNaN(date.getTime())) {
+    return fecha;
+  }
+
+  return date.toLocaleString("es-CO", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
 export default function Home() {
+  const { users, activeUser, isLoading: isLoadingUser } =
+    useActiveUser();
+
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [contenido, setContenido] = useState("");
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function cargarPublicaciones() {
+      setIsLoadingPosts(true);
+      setPostError(null);
+
+      try {
+        const publicaciones = await postService.getAll();
+        setPosts(publicaciones);
+      } catch (error) {
+        setPostError(
+          error instanceof Error
+            ? error.message
+            : "No se pudieron cargar las publicaciones.",
+        );
+      } finally {
+        setIsLoadingPosts(false);
+      }
+    }
+
+    void cargarPublicaciones();
+  }, []);
+
+  async function publicar(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+
+    const texto = contenido.trim();
+
+    if (!texto || !activeUser || isPublishing) {
+      return;
+    }
+
+    setIsPublishing(true);
+    setPostError(null);
+
+    try {
+      const publicaciones = await postService.create({
+        userId: activeUser.id,
+        numberId: String(Date.now()),
+        contenido: texto,
+        fecha: new Date().toISOString(),
+      });
+
+      setPosts(publicaciones);
+      setContenido("");
+    } catch (error) {
+      setPostError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo crear la publicación.",
+      );
+    } finally {
+      setIsPublishing(false);
+    }
+  }
+
+  async function editarPublicacion(post: Post) {
+    const nuevoContenido = window.prompt(
+      "Editar publicación:",
+      post.contenido,
+    );
+
+    if (nuevoContenido === null) {
+      return;
+    }
+
+    const texto = nuevoContenido.trim();
+
+    if (!texto) {
+      return;
+    }
+
+    setPostError(null);
+
+    try {
+      const publicaciones = await postService.update(post.id, {
+        contenido: texto,
+      });
+
+      setPosts(publicaciones);
+    } catch (error) {
+      setPostError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo actualizar la publicación.",
+      );
+    }
+  }
+
+  async function eliminarPublicacion(postId: string) {
+    const confirmar = window.confirm(
+      "¿Estás seguro de que deseas eliminar esta publicación?",
+    );
+
+    if (!confirmar) {
+      return;
+    }
+
+    setPostError(null);
+
+    try {
+      const publicaciones = await postService.delete(postId);
+      setPosts(publicaciones);
+    } catch (error) {
+      setPostError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo eliminar la publicación.",
+      );
+    }
+  }
+
+  function obtenerNombreAutor(userId: string): string {
+    return (
+      users.find((user) => user.id === userId)?.username ??
+      "Usuario desconocido"
+    );
+  }
+
   return (
     <div className="pagina">
       <BarraSuperior />
@@ -52,9 +200,10 @@ export default function Home() {
         <MenuLateral />
 
         <main className="zona-central">
-
           <div className="saludo">
-            <h2>Hola, Juan</h2>
+            <h2>
+              Hola, {activeUser?.username ?? "usuario"}
+            </h2>
 
             <p>
               Encuentra músicos, comparte tus creaciones
@@ -62,26 +211,118 @@ export default function Home() {
             </p>
           </div>
 
-          <section className="publicar">
+          <form className="publicar" onSubmit={publicar}>
             <textarea
               placeholder="Comparte una idea, una canción o invita a un evento..."
+              value={contenido}
+              onChange={(evento) =>
+                setContenido(evento.target.value)
+              }
+              disabled={isLoadingUser || !activeUser || isPublishing}
             />
 
             <div className="publicar-acciones">
-              <button className="boton-publicar">
-                Publicar
+              <button
+                type="submit"
+                className="boton-publicar"
+                disabled={
+                  isLoadingUser ||
+                  !activeUser ||
+                  !contenido.trim() ||
+                  isPublishing
+                }
+              >
+                {isPublishing ? "Publicando..." : "Publicar"}
               </button>
             </div>
+
+            {!isLoadingUser && !activeUser && (
+              <p role="alert">
+                Selecciona o crea un usuario desde tu perfil para publicar.
+              </p>
+            )}
+          </form>
+
+          {postError && (
+            <p role="alert" className="mensaje-error">
+              {postError}
+            </p>
+          )}
+
+          <section className="seccion">
+            <div className="encabezado-seccion">
+              <h3>Publicaciones recientes</h3>
+            </div>
+
+            {isLoadingPosts ? (
+              <p>Cargando publicaciones...</p>
+            ) : posts.length === 0 ? (
+              <p>
+                Todavía no hay publicaciones. Comparte algo con la comunidad.
+              </p>
+            ) : (
+              <div className="lista-creaciones">
+                {[...posts].reverse().map((post) => {
+                  const esAutor = post.userId === activeUser?.id;
+
+                  return (
+                    <article
+                      className="tarjeta-creacion"
+                      key={post.id}
+                    >
+                      <div className="portada-creacion">
+                        <span>♫</span>
+                      </div>
+
+                      <div className="informacion-creacion">
+                        <h4>{post.contenido}</h4>
+
+                        <p>{obtenerNombreAutor(post.userId)}</p>
+
+                        <p>{obtenerFecha(post.fecha)}</p>
+
+                        <div className="pie-creacion">
+                          <span className="etiqueta">
+                            Publicación
+                          </span>
+
+                          {esAutor && (
+                            <>
+                              <button
+                                type="button"
+                                className="boton-escuchar"
+                                onClick={() =>
+                                  void editarPublicacion(post)
+                                }
+                              >
+                                Editar
+                              </button>
+
+                              <button
+                                type="button"
+                                className="boton-escuchar"
+                                onClick={() =>
+                                  void eliminarPublicacion(post.id)
+                                }
+                              >
+                                Eliminar
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           <section className="seccion">
             <div className="encabezado-seccion">
               <h3>Músicos cerca de ti</h3>
 
-              <Link
-                href="/mapa"
-                className="ver-todo"
-              >
+              <Link href="/mapa" className="ver-todo">
                 Ver en mapa →
               </Link>
             </div>
@@ -148,11 +389,9 @@ export default function Home() {
               ))}
             </div>
           </section>
-
         </main>
 
         <aside className="panel-derecho">
-
           <section className="panel-tarjeta">
             <div className="encabezado-panel">
               <h3>Eventos cerca de ti</h3>
@@ -208,7 +447,6 @@ export default function Home() {
               <button>Mi perfil</button>
             </div>
           </section>
-
         </aside>
       </div>
     </div>
