@@ -10,6 +10,7 @@ import MenuLateral from "@/components/MenuLateral";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
 import { eventService } from "@/services/event.service";
 import { matchService, MatchServiceError } from "@/services/match.service";
+import { messageService } from "@/services/message.service";
 import { postService } from "@/services/post.service";
 import { songService } from "@/services/song.service";
 import type { Event } from "@/types/event";
@@ -68,6 +69,7 @@ export default function Home() {
   const [isLoadingSongs, setIsLoadingSongs] = useState(true);
   const [songError, setSongError] = useState<string | null>(null);
   const [musicosSugeridos, setMusicosSugeridos] = useState<User[]>([]);
+  const [matchedUserIds, setMatchedUserIds] = useState<Set<string>>(new Set());
   const [isLoadingMatches, setIsLoadingMatches] = useState(true);
   const [matchError, setMatchError] = useState<string | null>(null);
   const [matchFeedback, setMatchFeedback] = useState<string | null>(null);
@@ -101,6 +103,7 @@ export default function Home() {
     async function cargarSugerencias() {
       if (!activeUserId) {
         setMusicosSugeridos([]);
+        setMatchedUserIds(new Set());
         setMatchError(null);
         setMatchFeedback(null);
         setIsLoadingMatches(false);
@@ -115,12 +118,19 @@ export default function Home() {
           matchService.getAll(activeUserId),
         ]);
         if (!vigente) return;
-        setMusicosSugeridos(
-          candidatos.filter(
-            (candidato) =>
-              !misMatches.some((match) => match.usuariosMatch.includes(candidato.id)),
+        const idsMatch = new Set(
+          misMatches.flatMap((match) =>
+            match.usuariosMatch.filter((id) => id !== activeUserId),
           ),
         );
+        setMatchedUserIds(idsMatch);
+        const candidatosPorId = new Map(
+          candidatos.map((candidato) => [candidato.id, candidato] as const),
+        );
+        users.forEach((usuario) => {
+          if (idsMatch.has(usuario.id)) candidatosPorId.set(usuario.id, usuario);
+        });
+        setMusicosSugeridos([...candidatosPorId.values()]);
       } catch (error) {
         if (!vigente) return;
         setMatchError(
@@ -137,7 +147,7 @@ export default function Home() {
     return () => {
       vigente = false;
     };
-  }, [activeUserId]);
+  }, [activeUserId, users]);
 
   useEffect(() => {
     async function cargarCanciones() {
@@ -312,10 +322,23 @@ export default function Home() {
     setMatchFeedback(null);
     try {
       const nuevoMatch = await matchService.like(activeUser.id, musico.id);
-      setMusicosSugeridos((anteriores) => anteriores.filter((item) => item.id !== musico.id));
       if (nuevoMatch) {
-        setMatchFeedback(`¡Tienes un nuevo match con ${musico.username}!`);
+        setMatchedUserIds((anteriores) => new Set(anteriores).add(musico.id));
+        setMatchFeedback(`¡Tienes un match con ${musico.username}!`);
+        try {
+          const { created } = await messageService.ensureConversation(activeUser.id, musico.id);
+          setMatchFeedback(
+            `¡Tienes un match con ${musico.username}! ${created ? "Chat creado." : "El chat ya estaba creado."}`,
+          );
+        } catch (error) {
+          setMatchError(
+            error instanceof Error
+              ? `Match creado, pero no se pudo iniciar el chat: ${error.message}`
+              : "Match creado, pero no se pudo iniciar el chat.",
+          );
+        }
       } else {
+        setMusicosSugeridos((anteriores) => anteriores.filter((item) => item.id !== musico.id));
         setMatchFeedback(`Le enviaste un me gusta a ${musico.username}.`);
       }
     } catch (error) {
@@ -615,22 +638,28 @@ export default function Home() {
                         {detalle.instrumento} - {detalle.distancia}
                       </p>
 
-                      <button
-                        type="button"
-                        className="boton-perfil"
-                        onClick={() => void darLike(musico)}
-                        disabled={processingMatchId !== null}
-                      >
-                        Me gusta
-                      </button>
-                      <button
-                        type="button"
-                        className="enlace-verde"
-                        onClick={() => void rechazarMusico(musico)}
-                        disabled={processingMatchId !== null}
-                      >
-                        Pasar
-                      </button>
+                      {matchedUserIds.has(musico.id) ? (
+                        <span className="etiqueta">Match</span>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="boton-perfil"
+                            onClick={() => void darLike(musico)}
+                            disabled={processingMatchId !== null}
+                          >
+                            Me gusta
+                          </button>
+                          <button
+                            type="button"
+                            className="enlace-verde"
+                            onClick={() => void rechazarMusico(musico)}
+                            disabled={processingMatchId !== null}
+                          >
+                            Pasar
+                          </button>
+                        </>
+                      )}
                     </article>
                   );
                 })

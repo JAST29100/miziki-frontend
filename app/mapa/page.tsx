@@ -18,7 +18,7 @@ export default function PaginaMapa() {
             <h2>Mapa</h2>
 
             <p>
-              Explora músicos y eventos cerca de ti.
+              Explora músicos, tus matches y eventos cerca de ti.
             </p>
           </div>
 

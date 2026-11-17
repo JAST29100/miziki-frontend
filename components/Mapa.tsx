@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { matchService } from "@/services/match.service";
+import { matchService, MatchServiceError } from "@/services/match.service";
+import { messageService } from "@/services/message.service";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
+import type { Match } from "@/types/match";
 import type { User } from "@/types/user";
 
 interface Musico {
@@ -11,6 +13,7 @@ interface Musico {
   instrumento: string;
   nivel: string;
   distancia: number;
+  esMatch: boolean;
   posicion: {
     left: string;
     top: string;
@@ -27,9 +30,13 @@ interface Evento {
 }
 
 export default function Mapa() {
-  const { activeUser } = useActiveUser();
+  const { activeUser, users } = useActiveUser();
   const activeUserId = activeUser?.id;
   const [candidatos, setCandidatos] = useState<User[]>([]);
+  const [matchedUserIds, setMatchedUserIds] = useState<Set<string>>(new Set());
+  const [matchFeedback, setMatchFeedback] = useState<string | null>(null);
+  const [processingUserId, setProcessingUserId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isLoadingMusicos, setIsLoadingMusicos] = useState(true);
   const [errorMusicos, setErrorMusicos] = useState<string | null>(null);
   const [distancia, setDistancia] = useState("5");
@@ -42,6 +49,7 @@ export default function Mapa() {
     async function cargarCandidatos() {
       if (!activeUserId) {
         setCandidatos([]);
+        setMatchedUserIds(new Set());
         setErrorMusicos(null);
         setIsLoadingMusicos(false);
         return;
@@ -50,17 +58,24 @@ export default function Mapa() {
       setIsLoadingMusicos(true);
       setErrorMusicos(null);
       try {
-        const [descubiertos, misMatches] = await Promise.all([
+        const [descubiertos, misMatches]: [User[], Match[]] = await Promise.all([
           matchService.discover(activeUserId),
           matchService.getAll(activeUserId),
         ]);
         if (vigente) {
-          setCandidatos(
-            descubiertos.filter(
-              (usuario) =>
-                !misMatches.some((match) => match.usuariosMatch.includes(usuario.id)),
+          const idsMatch = new Set(
+            misMatches.flatMap((match) =>
+              match.usuariosMatch.filter((id) => id !== activeUserId),
             ),
           );
+          setMatchedUserIds(idsMatch);
+          const candidatosPorId = new Map(
+            descubiertos.map((usuario) => [usuario.id, usuario] as const),
+          );
+          users.forEach((usuario) => {
+            if (idsMatch.has(usuario.id)) candidatosPorId.set(usuario.id, usuario);
+          });
+          setCandidatos([...candidatosPorId.values()]);
         }
       } catch (error) {
         if (vigente) {
@@ -79,7 +94,59 @@ export default function Mapa() {
     return () => {
       vigente = false;
     };
-  }, [activeUserId]);
+  }, [activeUserId, users]);
+
+  async function darLike(usuario: User) {
+    if (!activeUserId || processingUserId) return;
+    setProcessingUserId(usuario.id);
+    setErrorMusicos(null);
+    setMatchFeedback(null);
+    try {
+      const nuevoMatch = await matchService.like(activeUserId, usuario.id);
+      setSelectedUserId(null);
+      if (nuevoMatch) {
+        setMatchedUserIds((anteriores) => new Set(anteriores).add(usuario.id));
+        try {
+          const { created } = await messageService.ensureConversation(activeUserId, usuario.id);
+          setMatchFeedback(
+            `¡Match con ${usuario.username}! ${created ? "Chat creado." : "Chat ya existente."}`,
+          );
+        } catch (error) {
+          setErrorMusicos(
+            error instanceof Error
+              ? `Match creado, pero no se pudo iniciar el chat: ${error.message}`
+              : "Match creado, pero no se pudo iniciar el chat.",
+          );
+        }
+      } else {
+        setCandidatos((anteriores) => anteriores.filter((item) => item.id !== usuario.id));
+      }
+    } catch (error) {
+      if (error instanceof MatchServiceError && error.status === 409) {
+        setCandidatos((anteriores) => anteriores.filter((item) => item.id !== usuario.id));
+        setMatchFeedback(`Ya habías enviado un me gusta a ${usuario.username}.`);
+        return;
+      }
+      setErrorMusicos(error instanceof Error ? error.message : "No se pudo enviar el me gusta.");
+    } finally {
+      setProcessingUserId(null);
+    }
+  }
+
+  async function pasarUsuario(usuario: User) {
+    if (!activeUserId || processingUserId) return;
+    setProcessingUserId(usuario.id);
+    setErrorMusicos(null);
+    try {
+      await matchService.reject(activeUserId, usuario.id);
+      setCandidatos((anteriores) => anteriores.filter((item) => item.id !== usuario.id));
+      setSelectedUserId(null);
+    } catch (error) {
+      setErrorMusicos(error instanceof Error ? error.message : "No se pudo descartar al músico.");
+    } finally {
+      setProcessingUserId(null);
+    }
+  }
 
   const detallesMusicoFallback: Omit<Musico, "id" | "nombre">[] = [
     {
@@ -117,6 +184,7 @@ export default function Mapa() {
   const musicos: Musico[] = candidatos.map((usuario, index) => ({
     id: usuario.id,
     nombre: usuario.username,
+    esMatch: matchedUserIds.has(usuario.id),
     ...detallesMusicoFallback[index % detallesMusicoFallback.length],
   }));
 
@@ -232,7 +300,9 @@ export default function Mapa() {
         <p className="resultado-filtros">
           {isLoadingMusicos
             ? "Cargando músicos..."
-            : errorMusicos ?? `${musicosFiltrados.length} músicos encontrados`}
+            : errorMusicos ??
+              matchFeedback ??
+              `${musicosFiltrados.length} músicos encontrados`}
         </p>
       </aside>
 
@@ -300,9 +370,53 @@ export default function Mapa() {
               ♪
             </span>
 
-            <span className="etiqueta-marcador">
-              {musico.nombre}
-            </span>
+            {musico.esMatch ? (
+              <>
+                <span className="etiqueta-marcador">{musico.nombre}</span>
+                <span className="etiqueta">Match</span>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="etiqueta-marcador marcador-nombre"
+                  aria-expanded={selectedUserId === musico.id}
+                  onClick={() =>
+                    setSelectedUserId((actual) =>
+                      actual === musico.id ? null : musico.id,
+                    )
+                  }
+                >
+                  {musico.nombre}
+                </button>
+                {selectedUserId === musico.id && (
+                  <div className="acciones-marcador">
+                    <button
+                      type="button"
+                      className="boton-pildora"
+                      onClick={() => {
+                        const usuario = candidatos.find((item) => item.id === musico.id);
+                        if (usuario) void darLike(usuario);
+                      }}
+                      disabled={processingUserId !== null}
+                    >
+                      Me gusta
+                    </button>
+                    <button
+                      type="button"
+                      className="enlace-verde"
+                      onClick={() => {
+                        const usuario = candidatos.find((item) => item.id === musico.id);
+                        if (usuario) void pasarUsuario(usuario);
+                      }}
+                      disabled={processingUserId !== null}
+                    >
+                      Pasar
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         ))}
 
