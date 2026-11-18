@@ -74,6 +74,38 @@ export default function Home() {
   const [matchError, setMatchError] = useState<string | null>(null);
   const [matchFeedback, setMatchFeedback] = useState<string | null>(null);
   const [processingMatchId, setProcessingMatchId] = useState<string | null>(null);
+  const [socialMatchCount, setSocialMatchCount] = useState(0);
+  const [conversacionReciente, setConversacionReciente] = useState<string>("Aún no hay conversaciones");
+
+  useEffect(() => {
+    let vigente = true;
+    async function cargarSocial() {
+      if (!activeUserId) {
+        setSocialMatchCount(0);
+        setConversacionReciente("Selecciona un usuario para ver su actividad");
+        return;
+      }
+      try {
+        const [matches, conversaciones] = await Promise.all([
+          matchService.getAll(activeUserId),
+          messageService.getConversations(),
+        ]);
+        if (!vigente) return;
+        setSocialMatchCount(matches.length);
+        const recientes = conversaciones.filter((conversation) =>
+          conversation.userId === activeUserId || conversation.otherUserId === activeUserId,
+        );
+        setConversacionReciente(recientes.length ? `${recientes.length} conversación${recientes.length === 1 ? "" : "es"} reciente${recientes.length === 1 ? "" : "s"}` : "Aún no hay conversaciones");
+      } catch {
+        if (vigente) {
+          setSocialMatchCount(0);
+          setConversacionReciente("No se pudo cargar la actividad");
+        }
+      }
+    }
+    void cargarSocial();
+    return () => { vigente = false; };
+  }, [activeUserId]);
 
   useEffect(() => {
     async function cargarPublicaciones() {
@@ -652,7 +684,7 @@ export default function Home() {
                           </button>
                           <button
                             type="button"
-                            className="enlace-verde"
+                            className="boton-pasar"
                             onClick={() => void rechazarMusico(musico)}
                             disabled={processingMatchId !== null}
                           >
@@ -735,15 +767,15 @@ export default function Home() {
               Conecta con tu comunidad musical
             </p>
 
-            <div className="social-item social-verde">
+            <Link href="/social" className="social-item social-verde">
               <h4>Amigos</h4>
-              <p>3 músicos activos cerca de ti</p>
-            </div>
+              <p>{socialMatchCount} {socialMatchCount === 1 ? "match" : "matches"} activos</p>
+            </Link>
 
-            <div className="social-item">
+            <Link href="/social" className="social-item">
               <h4>Mensajes</h4>
-              <p>Sofía Ramírez te escribió hace 5 min</p>
-            </div>
+              <p>{conversacionReciente}</p>
+            </Link>
           </section>
 
           <section className="panel-tarjeta actividad">
@@ -752,8 +784,8 @@ export default function Home() {
             <Link href="/eventos" className="boton-crear">+ Crear evento</Link>
 
             <div className="botones-actividad">
-              <button>Mis eventos</button>
-              <button>Mi perfil</button>
+              <Link href="/eventos">Mis eventos</Link>
+              <Link href="/perfil">Mi perfil</Link>
             </div>
           </section>
         </aside>

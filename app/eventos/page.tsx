@@ -324,9 +324,8 @@ export default function PaginaEventos() {
                     </p>
                   )}
 
-                  {/* Envía el formulario con Enter sin añadir un botón que no está en el diseño */}
-                  <button type="submit" hidden>
-                    Crear evento
+                  <button type="submit" className="boton-principal" disabled={isSaving || isLoadingUser || !activeUser}>
+                    {isSaving ? "Creando..." : "Crear evento"}
                   </button>
                 </form>
               </section>

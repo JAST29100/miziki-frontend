@@ -7,6 +7,7 @@ import type { FormEvent } from "react";
 import BarraSuperior from "@/components/BarraSuperior";
 import MenuLateral from "@/components/MenuLateral";
 import { useActiveUser } from "@/contexts/ActiveUserContext";
+import { userService } from "@/services/user.service";
 
 interface InfoMusical {
   instrumentos: string;
@@ -29,7 +30,7 @@ interface OpcionConfiguracion {
 
 interface ConfiguracionUsuario {
   notificaciones: {
-    nuevasPublicaciones: boolean;
+    matches: boolean;
     mensajes: boolean;
     eventos: boolean;
   };
@@ -54,7 +55,7 @@ const infoMusicalInicial: InfoMusical = {
 
 const configuracionInicial: ConfiguracionUsuario = {
   notificaciones: {
-    nuevasPublicaciones: true,
+    matches: true,
     mensajes: true,
     eventos: true,
   },
@@ -64,8 +65,6 @@ const configuracionInicial: ConfiguracionUsuario = {
     permitirMensajes: true,
   },
 };
-
-const etiquetasIniciales = ["Piano", "Jazz", "Blues"];
 
 const camposInfoMusical: CampoInfoMusical[] = [
   { clave: "instrumentos", etiqueta: "Instrumentos" },
@@ -182,6 +181,7 @@ export default function PaginaPerfil() {
   const [creandoUsuario, setCreandoUsuario] = useState(false);
   const [mostrarFormularioCrear, setMostrarFormularioCrear] =
     useState(false);
+  const etiquetasPerfil = infoMusical.generos.split(/[·,]/).map((etiqueta) => etiqueta.trim()).filter(Boolean);
 
   useEffect(() => {
     if (activeUser) {
@@ -485,12 +485,12 @@ export default function PaginaPerfil() {
                   ) : (
                     <>
                       <h3>{activeUser.username}</h3>
-                      <p>{activeUser.email}</p>
+                      {configuracion.privacidad.mostrarCorreo && <p>{activeUser.email}</p>}
                     </>
                   )}
 
                   <div className="etiquetas-perfil">
-                    {etiquetasIniciales.map((etiqueta, indice) => (
+                    {etiquetasPerfil.map((etiqueta, indice) => (
                       <span key={etiqueta}>
                         {indice > 0 && (
                           <span aria-hidden="true">· </span>
@@ -621,17 +621,17 @@ export default function PaginaPerfil() {
                           <input
                             type="checkbox"
                             checked={
-                              configuracion.notificaciones.nuevasPublicaciones
+                            configuracion.notificaciones.matches
                             }
                             onChange={(evento) =>
                               actualizarConfiguracion(
                                 "notificaciones",
-                                "nuevasPublicaciones",
+                                "matches",
                                 evento.target.checked,
                               )
                             }
                           />
-                          Notificaciones de nuevas publicaciones
+                          Alertas de matches
                         </label>
                       </div>
 
@@ -709,7 +709,7 @@ export default function PaginaPerfil() {
                               )
                             }
                           />
-                          Mostrar mi correo electrónico
+                          Mostrar correo electrónico en mi perfil
                         </label>
                       </div>
 
@@ -759,6 +759,34 @@ export default function PaginaPerfil() {
                           readOnly
                         />
                       </div>
+
+                      <div className="campo-formulario">
+                        <label htmlFor="cuenta-id">ID de usuario</label>
+                        <input id="cuenta-id" className="campo" value={activeUser.id} readOnly />
+                      </div>
+
+                      <div className="campo-formulario">
+                        <label htmlFor="cuenta-creado">Fecha de registro</label>
+                        <input id="cuenta-creado" className="campo" value={activeUser.creadoEn ? new Date(activeUser.creadoEn).toLocaleDateString("es-CO") : "No disponible"} readOnly />
+                      </div>
+
+                      <button
+                        type="button"
+                        className="boton-cerrar-sesion"
+                        onClick={async () => {
+                          if (!window.confirm("¿Seguro que deseas eliminar esta cuenta? Esta acción no se puede deshacer.")) return;
+                          try {
+                            await userService.delete(activeUser.id);
+                            localStorage.removeItem(`miziki.configuracion.${activeUser.id}`);
+                            localStorage.removeItem(`miziki.infoMusical.${activeUser.id}`);
+                            await reloadUsers();
+                          } catch {
+                            // El contexto conserva y muestra los errores al recargar usuarios.
+                          }
+                        }}
+                      >
+                        Eliminar cuenta
+                      </button>
 
                       <p>
                         Para modificar estos datos, utiliza la opción
