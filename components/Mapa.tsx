@@ -148,7 +148,7 @@ export default function Mapa() {
     }
   }
 
-  const detallesMusicoFallback: Omit<Musico, "id" | "nombre">[] = [
+  const detallesMusicoFallback: Omit<Musico, "id" | "nombre" | "esMatch">[] = [
     {
       instrumento: "Guitarra",
       nivel: "Intermedio",
@@ -182,10 +182,10 @@ export default function Mapa() {
   ];
 
   const musicos: Musico[] = candidatos.map((usuario, index) => ({
+    ...detallesMusicoFallback[index % detallesMusicoFallback.length],
     id: usuario.id,
     nombre: usuario.username,
     esMatch: matchedUserIds.has(usuario.id),
-    ...detallesMusicoFallback[index % detallesMusicoFallback.length],
   }));
 
   const eventos: Evento[] = [
