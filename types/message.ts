@@ -17,6 +17,6 @@ export interface CreateMessageDTO {
 }
 
 export interface CreateConversationDTO {
-  currentUserId: string;
   userId: string;
+  otherUserId: string;
 }

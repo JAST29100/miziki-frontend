@@ -66,8 +66,8 @@ export const messageService = {
     if (existing) return { conversation: existing, created: false };
 
     const conversation = await this.createConversation({
-      currentUserId: firstId,
-      userId: secondId,
+      userId: firstId,
+      otherUserId: secondId,
     });
     return { conversation, created: true };
   },
